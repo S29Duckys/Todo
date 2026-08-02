@@ -2,7 +2,7 @@ function App() {
 
   return (
     <div>
-      test
+      <button className="btn btn-accent">send</button>
     </div>
   )
 }
