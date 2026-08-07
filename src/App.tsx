@@ -1,57 +1,56 @@
 import { useEffect, useState } from "react";
 import TodoItem from "./Todoitem";
 import { Construction } from "lucide-react";
-
-type Priority = "Urgent" | "Medium" | "Low";
-
-type Todo = {
-  id: number;
-
-  text: string;
-
-  priority: Priority;
-};
-
-const legacyPriorities: Record<string, Priority> = {
-  Urgente: "Urgent",
-  Moyenne: "Medium",
-  Basse: "Low",
-};
+import { supabase } from "./lib/supabase";
+import type { Priority, Todo } from "./types";
 
 function App() {
   const [input, setInput] = useState<string>("");
   const [priority, setPriority] = useState<Priority>("Medium");
-  const savedTodo = localStorage.getItem("todos");
-  const initialTodo: Todo[] = savedTodo
-    ? JSON.parse(savedTodo).map((todo: Todo) => ({
-        ...todo,
-        priority: legacyPriorities[todo.priority] ?? todo.priority,
-      }))
-    : [];
-  const [todos, settodos] = useState<Todo[]>(initialTodo);
+  const [todos, settodos] = useState<Todo[]>([]);
   const [filter, setfilter] = useState<Priority | "All">("All")
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    localStorage.setItem("todos", JSON.stringify(todos));
-  }, [todos]);
+    async function loadTodos() {
+      const { data, error } = await supabase
+        .from("todos")
+        .select("id, text, priority, completed")
+        .order("created_at", { ascending: false });
 
-  function addTodo() {
+      if (error) {
+        setError(error.message);
+      } else {
+        settodos(data);
+      }
+
+      setLoading(false);
+    }
+
+    loadTodos();
+  }, []);
+
+  async function addTodo() {
     if (input.trim() == "") {
       return;
     }
 
-    const newTodo: Todo = {
-      id: Date.now(),
-      text: input.trim(),
-      priority: priority,
-    };
+    const { data, error } = await supabase
+      .from("todos")
+      .insert({ text: input.trim(), priority: priority })
+      .select("id, text, priority, completed")
+      .single();
 
-    const newTodos = [newTodo, ...todos];
-    settodos(newTodos);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    settodos([data, ...todos]);
     setInput("");
     setPriority("Medium");
-
-    console.log(newTodo);
+    setError("");
   }
 
   let filterTodos: Todo[] = []
@@ -68,9 +67,41 @@ function App() {
 
   const totalCount = todos.length
 
-  function deletTodo(id: number){
-    const newTodo = todos.filter((todo) => todo.id !== id)
-    settodos(newTodo)
+  async function toggleTodo(id: string){
+    const todo = todos.find((todo) => todo.id === id)
+
+    if (!todo) {
+      return
+    }
+
+    const completed = !todo.completed
+
+    settodos(todos.map((t) => (t.id === id ? { ...t, completed } : t)))
+
+    const { error } = await supabase
+      .from("todos")
+      .update({ completed })
+      .eq("id", id);
+
+    if (error) {
+      settodos(todos)
+      setError(error.message)
+      return
+    }
+
+    setError("")
+  }
+
+  async function deletTodo(id: string){
+    const { error } = await supabase.from("todos").delete().eq("id", id);
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    settodos(todos.filter((todo) => todo.id !== id))
+    setError("")
   }
 
   return (
@@ -106,6 +137,11 @@ function App() {
             Add
           </button>
         </div>
+        {error && (
+          <div className="alert alert-error text-sm">
+            <span className="break-words">{error}</span>
+          </div>
+        )}
         <div className="space-y-2 flex-1 h-fit">
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
             <button className={`btn btn-sm sm:btn-md btn-soft ${filter === "All" ? "btn-primary" : ""}`} onClick={() => setfilter("All")}>All ({totalCount})</button>
@@ -113,11 +149,19 @@ function App() {
             <button className={`btn btn-sm sm:btn-md btn-soft ${filter === "Medium" ? "btn-primary" : ""}`} onClick={() => setfilter("Medium")}>Medium ({mediumCount})</button>
             <button className={`btn btn-sm sm:btn-md btn-soft ${filter === "Low" ? "btn-primary" : ""}`} onClick={() => setfilter("Low")}>Low ({lowCount})</button>
           </div>
-          {filterTodos.length > 0 ? (
+          {loading ? (
+            <div className="flex justify-center items-center p-4 sm:p-5">
+              <span className="loading loading-spinner loading-lg text-primary"></span>
+            </div>
+          ) : filterTodos.length > 0 ? (
             <ul className="divide-y divide-primary/20">
               {filterTodos.map((todo) => (
                 <li key={todo.id}>
-                  <TodoItem todo={todo} onDelete={() => deletTodo(todo.id)}/>
+                  <TodoItem
+                    todo={todo}
+                    onDelete={() => deletTodo(todo.id)}
+                    onToggle={() => toggleTodo(todo.id)}
+                  />
                 </li>
               ))}
             </ul>
