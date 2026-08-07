@@ -1,6 +1,6 @@
 import { Trash } from "lucide-react";
 
-type Priority = "Urgente" | "Moyenne" | "Basse";
+type Priority = "Urgent" | "Medium" | "Low";
 
 type Todo = {
   id: number;
@@ -28,9 +28,9 @@ const TodoItem = ({ todo, onDelete }: Props) => {
             <span className="break-words min-w-0">{todo.text}</span>
             <span
               className={`badge badge-sm badge-soft shrink-0 ${
-                todo.priority === "Urgente"
+                todo.priority === "Urgent"
                   ? "badge-error"
-                  : todo.priority === "Moyenne"
+                  : todo.priority === "Medium"
                     ? "badge-warning"
                     : "badge-success"
               }`}
