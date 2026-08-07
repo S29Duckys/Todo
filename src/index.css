@@ -161,8 +161,9 @@
     animation: pop 380ms var(--ease-out-back) both;
   }
 
-  /* Stagger for the first rows of the list; anything below the fold
-     lands with the same delay as the 8th row. */
+  /* Stagger for the loading skeletons. Deliberately not applied to real
+     rows: completing a task reorders the list, React moves that node, and
+     a delayed entry animation would blank it out while it replays. */
   .stagger > *:nth-child(1) {
     animation-delay: 0ms;
   }

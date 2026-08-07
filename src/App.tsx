@@ -61,6 +61,10 @@ function App() {
     filterTodos = todos.filter((todo) => todo.priority === filter)
   }
 
+  filterTodos = [...filterTodos].sort(
+    (a, b) => Number(a.completed) - Number(b.completed)
+  )
+
   const urgentCount = todos.filter((t) => t.priority === "Urgent").length
   const mediumCount = todos.filter((t) => t.priority === "Medium").length
   const lowCount = todos.filter((t) => t.priority === "Low").length
@@ -204,7 +208,7 @@ function App() {
                 </li>
               </ul>
             ) : filterTodos.length > 0 ? (
-              <ul className="stagger divide-y divide-base-300/40">
+              <ul className="divide-y divide-base-300/40">
                 {filterTodos.map((todo) => (
                   <li key={todo.id} className="animate-rise">
                     <TodoItem
